@@ -1,0 +1,101 @@
+﻿# -*- coding: utf-8 -*-
+"""
+Created on Fri May 29 01:13:51 2020
+
+
+@author: Albert
+"""
+
+
+from mpl_toolkits import mplot3d
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+#define constants
+
+
+#diffusivities
+Dd=367 #dermis
+Dve=148 #viable epidermis
+Dsc=4.05 #stratum corneum
+
+
+#thickness um
+hd=1470 #dermis
+#hd=135
+hve=100 #viable epidermis
+hsc=15 #stratum corneum
+
+
+#ftcs steps
+dx=10 #space um
+dt=0.136 #time s
+timespan=160000
+
+
+#initial concentration
+c0=1
+
+
+#define reservoir size, flux area
+A=100000000 # um^2=1 cm^2
+Vreservoir=1000000000 #volume of reservoir um^3
+drugtotal=Vreservoir*c0
+
+
+#solve ftcs for skin
+
+
+#define loop indices parameters
+j=0
+i=0
+
+
+#instantiate concentration array over space, time
+C=[[0 for j in range(int((hd+hve+hsc)/dx)+1)] for i in range(timespan+1)]
+#establish initial quantity
+C[0][0]=c0
+
+
+#ftcs for skin
+while i<timespan:
+    j=0;
+    while j<=int(hd/dx+hve/dx+hsc/dx)+1:
+        #define diffusivities
+        #stratum corneum
+        if j<=int(hd/dx):
+            r=Dsc*dt/dx/dx
+        #viable epidermis
+        if j>int(hd/dx) and j<=int(hd/dx+hve/dx):
+            r=Dve*dt/dx/dx
+        #dermis
+        if j>int(hd/dx+hve/dx) and j<=int(hd/dx+hve/dx+hsc/dx):
+            r=Dd*dt/dx/dx
+
+
+        if j==0:
+            C[i+1][j]=r*(C[i][j]-2*C[i][j]+C[i][j+1])+C[i][j]
+        if j<int(hd/dx+hve/dx+hsc/dx):
+            C[i+1][j]=r*(C[i][j-1]-2*C[i][j]+C[i][j+1])+C[i][j]
+        if j==int(hd/dx+hve/dx+hsc/dx):
+            C[i+1][j]=(r*(C[i][j-1]-2*C[i][j]+C[i][j])+C[i][j])
+        
+        j=j+1
+        
+    drugtotal=Vreservoir*c0-(sum(C[i][:])-C[i][0])*A
+    i=i+1
+    if i<timespan:
+        C[i][0]=drugtotal/Vreservoir
+    
+fig=plt.figure()
+ax=plt.axes(projection='3d')
+xmax=int(hd/dx+hve/dx+hsc/dx)
+x=np.array(range(0,xmax+1))*dx
+y=np.array(range(0,timespan+1))*dt/3600
+z=np.array(C)
+x, y = np.meshgrid(x,y)
+ax.plot_surface(x,y,z, cmap='viridis')
+ax.set_xlabel('Skin Depth (um)')
+ax.set_ylabel('Time (hr)')
+ax.set_zlabel('Concentration')
